@@ -1,83 +1,170 @@
-# .NET 8 CQRS & Event-Driven Order API
+# 🚀 .NET 8 CQRS & Event-Driven Order API
 
-This project is a .NET 8 ASP.NET Core Web API demonstrating the **Command Query Responsibility Segregation (CQRS)** pattern with an event-driven read model. It's designed to manage customer orders, separating the process of creating and modifying data from the process of querying it.
+> A clean, minimal, and production-ready sample that demonstrates **CQRS** with an **event-driven read model** using .NET 8, EF Core and SQLite.
 
-## 1. Architecture & Flow
+[![.NET](https://img.shields.io/badge/.NET-8-blue)](#) [![License](https://img.shields.io/badge/license-MIT-green)](#) [![Status](https://img.shields.io/badge/status-experimental-orange)](#)
 
-The core principle of this application is the clear separation of concerns between the "write" side (commands) and the "read" side (queries).
+---
 
-- **Write Side (Commands):**
-    1. A `CreateOrderCommand` is received by the API.
-    2. The command is first validated using `FluentValidation`.
-    3. The `CreateOrderCommandHandler` processes the command, saving the new `Order` entity to the **write database** via `WriteDbContext`.
-    4. Upon successful creation, an `OrderCreatedEvent` is published.
+## ✨ Project Overview
 
-- **Projection (Event Handling):**
-    1. The `OrderCreatedProjectionHandler` listens for the `OrderCreatedEvent`.
-    2. It updates the **read database** by creating a simplified representation of the order, keeping the read model in sync with the write model.
+This repository implements a small but realistic Orders API that separates **writes** (commands) from **reads** (queries). The write side persists full domain entities and publishes events. Projection handlers consume those events to keep a lightweight **read model** (optimized for queries) in sync.
 
-- **Read Side (Queries):**
-    1. API endpoints for listing or getting a specific order receive queries like `GetOrdersListQuery` or `GetOrderByIdQuery`.
-    2. These queries directly access the **read database** via `ReadDbContext`.
-    3. They return lightweight Data Transfer Objects (DTOs), specifically designed for API consumption, without exposing the full `Order` entity.
+It’s intentionally minimal so you can read, learn, and extend the architecture for production usage patterns (event buses, snapshots, distributed transactions, etc.).
 
-## 2. Key Components
+---
 
-- **`Features/Commands/*`**: Contains all command handlers (`CreateOrderCommandHandler.cs`), their associated commands (`CreateOrderCommand.cs`), and validation logic (`CreateOrderCommandValidator.cs`).
-- **`Features/Queries/*`**: Holds the query handlers (`GetOrderByIdQueryHandler.cs`) and query objects (`GetOrdersListQuery.cs`).
-- **`Services/Events/*`**: Defines the event publishing mechanism. The `IEventPublisher` interface is implemented by `InProcessEventPublisher`, which handles events within the same application process. A `ConsoleEventPublisher` is also included for demonstration and logging.
-- **`Projections/*`**: The projection logic lives here. `OrderCreatedProjectionHandler.cs` is the key component responsible for updating the read model based on new events.
-- **`Data/`**: Manages persistence.
-    - **`WriteDbContext.cs`**: The EF Core `DbContext` for the write database (commands).
-    - **`ReadDbContext.cs`**: The EF Core `DbContext` for the read database (queries).
-    - **`DB/`**: The folder containing the actual SQLite database files (`write.db` and `read.db`).
-- **`Dtos/*`**: A collection of Data Transfer Objects (`OrderDto.cs`) used for API responses and preventing the exposure of internal data models.
-- **`Migrations/`**: Migrations are separated by database to maintain schema control for both the write and read models.
-    - **`Migrations/Read`**: Migrations for `ReadDbContext`.
-    - **`Migrations/Write`**: Migrations for `WriteDbContext`.
-- **`Program.cs`**: The application's entry point, likely using minimal APIs to configure the request pipeline, dependency injection, database contexts, Swagger, and endpoint mapping.
+## 🔍 Table of contents
 
-## 3. Technologies Used
+1. [Architecture & Flow](#-architecture--flow)  
+2. [Key Components](#-key-components)  
+3. [Tech Stack](#-tech-stack)  
+4. [Getting started](#-getting-started)  
+5. [Usage & Examples](#-usage--examples)  
+6. [Project Layout](#-project-layout)  
+7. [Design Decisions](#-design-decisions)  
+8. [Roadmap](#-roadmap)  
+9. [Contributing](#-contributing)  
+10. [License](#-license)  
 
-- **.NET 8 / ASP.NET Core**: The core framework for building the API.
-- **Entity Framework Core**: An object-relational mapper (ORM) used for database interactions.
-- **SQLite**: A lightweight, file-based database used for both the read and write models, simplifying the setup without requiring an external database server.
-- **FluentValidation**: A popular .NET library for building strong-typed validation rules.
-- **Dependency Injection**: The built-in DI container of ASP.NET Core is used to manage service lifetimes and resolve dependencies.
-- **OpenAPI / Swagger**: Provides an interactive API documentation page and metadata, making it easy to test and understand the endpoints.
+---
 
-## 4. Getting Started
+## 🧭 Architecture & Flow
 
-1.  **Clone the repository:**
-    ```bash
-    git clone [your-repo-url]
-    cd [your-project-directory]
-    ```
+**High level:** commands → write model → events → projections → read model → queries
 
-2.  **Restore dependencies:**
-    ```bash
-    dotnet restore
-    ```
+Client --> HTTP API --> Command (CreateOrderCommand)
+│
+└─> WriteDbContext (persist Order)
+└─> Publish(OrderCreatedEvent)
+└─> Projection handler (OrderCreatedProjectionHandler)
+└─> ReadDbContext (create OrderDto)
 
-3.  **Run migrations:**
-    The databases are managed by separate migrations. Apply them to ensure your database schemas are up to date.
-    ```bash
-    # Apply Write DB migrations
-    dotnet ef database update --context WriteDbContext --project Data --startup-project [YourProjectName]
+Client --> HTTP API --> Query (GetOrdersListQuery) --> ReadDbContext --> DTO
 
-    # Apply Read DB migrations
-    dotnet ef database update --context ReadDbContext --project Data --startup-project [YourProjectName]
-    ```
-    *Note: Replace `[YourProjectName]` with the name of your main project file, e.g., `MyCqrsApi.csproj`.*
+markdown
+Copy code
 
-4.  **Run the application:**
-    ```bash
-    dotnet run
-    ```
-    The API will be available at `https://localhost:5001` (or a similar port). The Swagger UI can be accessed at `https://localhost:5001/swagger`.
+**Why this structure?**  
+- Clear separation of responsibilities.  
+- Read model is optimized for fast queries and can evolve independently.  
+- Events act as the source of truth for eventual consistency between models.  
 
-## 5. API Endpoints
+---
 
-- **`POST /api/orders`**: Creates a new order.
-- **`GET /api/orders`**: Retrieves a list of all orders from the read model.
-- **`GET /api/orders/{id}`**: Retrieves a specific order by ID from the read model.
+## 🧩 Key Components
+
+- **Commands & Handlers** (`Features/Commands/`)  
+  - `CreateOrderCommand`, `CreateOrderCommandHandler`, `CreateOrderCommandValidator` (FluentValidation)  
+- **Queries & Handlers** (`Features/Queries/`)  
+  - `GetOrdersListQuery`, `GetOrderByIdQuery`, and their handlers that read from `ReadDbContext`  
+- **Events & Publishers** (`Services/Events/`)  
+  - `IEventPublisher`, `InProcessEventPublisher`, `ConsoleEventPublisher`  
+- **Projections** (`Projections/`)  
+  - `OrderCreatedProjectionHandler` listens for `OrderCreatedEvent` and updates `ReadDbContext`  
+- **Data Layer** (`Data/`)  
+  - `WriteDbContext` and `ReadDbContext` (EF Core + SQLite)  
+- **DTOs** (`Dtos/`) — lightweight objects returned by API endpoints  
+- **Migrations** — separated per DB (`Migrations/Read`, `Migrations/Write`)  
+
+---
+
+## 🛠 Tech Stack
+
+- **.NET 8 / ASP.NET Core**  
+- **Entity Framework Core (EF Core)**  
+- **SQLite** (file-based `write.db` and `read.db` under `Data/DB`)  
+- **MediatR** or similar mediator pattern (if used) for command/query dispatching  
+- **FluentValidation** for command validation  
+- **Swagger / OpenAPI** for interactive documentation  
+
+---
+
+## 🚀 Getting started (quick)
+
+> Tested with .NET 8 SDK. Replace `YourProjectName` with your project file if needed.
+
+```bash
+# clone
+git clone <your-repo-url>
+cd <repo-folder>
+
+# restore
+dotnet restore
+
+# apply migrations (Write + Read)
+dotnet ef database update --context WriteDbContext --project Data --startup-project .
+
+dotnet ef database update --context ReadDbContext --project Data --startup-project .
+
+# run the app
+dotnet run --project .
+Open: https://localhost:5001/swagger to explore endpoints.
+
+📦 API Endpoints (example)
+POST /api/orders — Create order
+
+Body:
+
+json
+Copy code
+{
+  "customerName": "Jane Doe",
+  "items": [
+    { "sku": "ABC-1", "qty": 2, "price": 9.99 }
+  ]
+}
+Returns: OrderDto (from read model once projection processed)
+
+GET /api/orders — List orders (reads from ReadDbContext)
+
+GET /api/orders/{id} — Get order by id (reads from ReadDbContext)
+
+Note: the API returns DTOs from the read model — eventual consistency means the new resource may not be immediately available in the read DB depending on projection timing.
+
+🗂 Project Layout (recommended)
+pgsql
+Copy code
+src/
+├─ Features/
+│  ├─ Commands/
+│  └─ Queries/
+├─ Services/
+│  └─ Events/
+├─ Projections/
+├─ Data/
+│  ├─ DB/ (write.db, read.db)
+│  ├─ ReadDbContext.cs
+│  └─ WriteDbContext.cs
+├─ Dtos/
+├─ Migrations/
+│  ├─ Read/
+│  └─ Write/
+└─ Program.cs
+🧠 Design Decisions
+SQLite for demos: zero-config, great for samples. Replace with PostgreSQL/SQL Server for production.
+
+In-process event publishing: Simple and reliable for local demos. In production, replace with a durable message broker (RabbitMQ, Kafka, Azure Service Bus).
+
+Separate migrations per DB: avoids migration collisions and gives each model independent schema evolution.
+
+DTOs for queries: prevents leaking internal domain model and keeps API contracts stable.
+
+✅ Good to Know / Troubleshooting
+If IEventPublisher resolution fails, ensure the implementation (e.g. InProcessEventPublisher) is registered in DI in Program.cs.
+
+If migrations fail, double-check --project and --startup-project values; EF needs the startup project to resolve Program.cs.
+
+Use dotnet ef migrations add <Name> --context ReadDbContext --project Data --startup-project . to add read-db migrations.
+
+🛣 Roadmap / Ideas
+Add integration tests for command → event → projection → read flow.
+
+Replace in-process publisher with pluggable transports.
+
+Add snapshotting and idempotent event handlers for replays.
+
+Add authentication & authorization to API.
+
+🤝 Contributing
+Contributions welcome! Please open issues / PRs. Keep changes small and focused. Add tests for new behavior.
