@@ -84,7 +84,7 @@ Copy code
 
 > Tested with .NET 8 SDK. Replace `YourProjectName` with your project file if needed.
 
-```bash
+
 # clone
 git clone <your-repo-url>
 cd <repo-folder>
