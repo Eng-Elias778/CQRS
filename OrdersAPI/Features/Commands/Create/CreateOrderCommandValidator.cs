@@ -1,6 +1,6 @@
 ﻿using FluentValidation;
 
-namespace OrdersAPI.Features.Commands;
+namespace OrdersAPI.Features.Commands.Create;
 
 public class CreateOrderCommandValidator : AbstractValidator<CreateOrderCommand>
 {

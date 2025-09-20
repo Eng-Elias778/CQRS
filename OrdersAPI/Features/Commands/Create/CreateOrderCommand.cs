@@ -1,7 +1,7 @@
 ﻿using MediatR;
 using OrdersAPI.Dtos;
 
-namespace OrdersAPI.Features.Commands;
+namespace OrdersAPI.Features.Commands.Create;
 
 public class CreateOrderCommand : IRequest<OrderDto>
 {

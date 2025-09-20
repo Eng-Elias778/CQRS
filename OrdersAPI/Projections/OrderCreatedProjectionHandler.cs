@@ -1,6 +1,6 @@
 ﻿using MediatR;
 using OrdersAPI.Data;
-using OrdersAPI.Features.Commands;
+using OrdersAPI.Features.Commands.Create;
 using OrdersAPI.Models;
 using OrdersAPI.Services.Events;
 

@@ -1,6 +1,6 @@
 ﻿using MediatR;
 
-namespace OrdersAPI.Features.Commands;
+namespace OrdersAPI.Features.Commands.Create;
 
 public class OrderCreatedEvent : INotification
 {

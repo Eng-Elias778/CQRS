@@ -7,7 +7,7 @@ using OrdersAPI.Services;
 using OrdersAPI.Services.Events;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
-namespace OrdersAPI.Features.Commands;
+namespace OrdersAPI.Features.Commands.Create;
 
 public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, OrderDto>
 {
